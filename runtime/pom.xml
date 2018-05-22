@@ -43,6 +43,7 @@
     <module>api</module>
     <module>core</module>
     <module>service</module>
+    <module>modules/flatfile</module>
     <module>modules/java</module>
     <module>modules/json</module>
     <module>modules/xml</module>

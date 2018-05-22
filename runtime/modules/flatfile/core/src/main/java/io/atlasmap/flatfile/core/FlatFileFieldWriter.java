@@ -1,0 +1,276 @@
+/**
+ * Copyright (C) 2017 Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.atlasmap.flatfile.core;
+
+import java.math.BigDecimal;
+
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import io.atlasmap.api.AtlasException;
+import io.atlasmap.core.AtlasPath;
+import io.atlasmap.spi.AtlasFieldWriter;
+import io.atlasmap.spi.AtlasInternalSession;
+import io.atlasmap.v2.AtlasModelFactory;
+import io.atlasmap.v2.Field;
+import io.atlasmap.v2.FieldType;
+
+/**
+ */
+public class FlatFileFieldWriter implements AtlasFieldWriter {
+    private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(FlatFileFieldWriter.class);
+
+    private ObjectMapper objectMapper = null;
+    private ObjectNode rootNode = null;
+
+    public FlatFileFieldWriter() {
+        this.objectMapper = new ObjectMapper();
+        objectMapper.setDefaultPrettyPrinter(new DefaultPrettyPrinter());
+        rootNode = objectMapper.createObjectNode();
+    }
+
+    public FlatFileFieldWriter(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+        this.rootNode = objectMapper.createObjectNode();
+    }
+
+    public ObjectNode getRootNode() {
+        return rootNode;
+    }
+
+    public ObjectMapper getObjectMapper() {
+        return objectMapper;
+    }
+
+    @Override
+    public void write(AtlasInternalSession session) throws AtlasException {
+        Field targetField = session.head().getTargetField();
+        if (targetField == null) {
+            throw new AtlasException(new IllegalArgumentException("Argument 'jsonField' cannot be null"));
+        }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Field: " + AtlasModelFactory.toString(targetField));
+            LOG.debug("Field type=" + targetField.getFieldType() + " path=" + targetField.getPath() + " v="
+                    + targetField.getValue());
+        }
+        AtlasPath path = new AtlasPath(targetField.getPath());
+        String lastSegment = path.getLastSegment();
+        ObjectNode parentNode = this.rootNode;
+        String parentSegment = null;
+        for (String segment : path.getSegments()) {
+            if (!segment.equals(lastSegment)) { // this is a parent node.
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Now processing parent segment: " + segment);
+                }
+                JsonNode childNode = getChildNode(parentNode, parentSegment, segment);
+                if (childNode == null) {
+                    childNode = createParentNode(parentNode, parentSegment, segment);
+                } else if (childNode instanceof ArrayNode) {
+                    int index = AtlasPath.indexOfSegment(segment);
+                    ArrayNode arrayChild = (ArrayNode) childNode;
+                    if (arrayChild.size() < (index + 1)) {
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("Object Array is too small, resizing to accomodate index: " + index
+                                    + ", current array: " + arrayChild);
+                        }
+                        // if our array doesn't have index + 1 items in it, add nulls until we have the
+                        // index available
+                        while (arrayChild.size() < (index + 1)) {
+                            arrayChild.addObject();
+                        }
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("Object Array after resizing: " + arrayChild);
+                        }
+                    }
+                    childNode = arrayChild.get(index);
+                }
+                parentNode = (ObjectNode) childNode;
+                parentSegment = segment;
+            } else { // this is the last segment of the path, write the value
+                if (targetField.getFieldType() == FieldType.COMPLEX) {
+                    createParentNode(parentNode, parentSegment, segment);
+                    return;
+                }
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Now processing field value segment: " + segment);
+                }
+                writeValue(parentNode, parentSegment, segment, targetField);
+            }
+        }
+    }
+
+    private void writeValue(ObjectNode parentNode, String parentSegment, String segment, Field field) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Writing field value '" + segment + "' in parent node '" + parentSegment + "', parentNode: "
+                    + parentNode);
+        }
+        JsonNode valueNode = createValueNode(field);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Value to write: " + valueNode);
+        }
+        String cleanedSegment = AtlasPath.cleanPathSegment(segment);
+        if (AtlasPath.isCollectionSegment(segment)) {
+            // if this field is a collection, we need to place our value in an array
+
+            // get or construct the array the value will be placed in
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Field type is collection. Fetching array '" + segment + "' from parent '" + parentSegment
+                        + "': " + parentNode);
+            }
+
+            ArrayNode arrayChild = (ArrayNode) getChildNode(parentNode, parentSegment, segment);
+            if (arrayChild == null) {
+                arrayChild = parentNode.putArray(cleanedSegment);
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Could not find array to place value in, created it in parent: " + parentNode);
+                }
+            }
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Array before placing value: " + arrayChild);
+            }
+
+            // determine where in the array our value will go
+            int index = AtlasPath.indexOfSegment(segment);
+
+            if (arrayChild.size() < (index + 1)) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Value Array is too small, resizing to accomodate index: " + index + ", current array: "
+                            + arrayChild);
+                }
+                // if our array doesn't have index + 1 items in it, add nulls until we have the
+                // index available
+                while (arrayChild.size() < (index + 1)) {
+                    arrayChild.addNull();
+                }
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Value Array after resizing: " + arrayChild);
+                }
+            }
+
+            // set the value in the array
+            arrayChild.set(index, valueNode);
+        } else {
+            // on a regular primitive value, just set it in the object node parent
+            parentNode.replace(cleanedSegment, valueNode);
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Parent node after value written: " + parentNode);
+        }
+    }
+
+    private ObjectNode createParentNode(ObjectNode parentNode, String parentSegment, String segment) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Creating parent node '" + segment + "' under previous parent '" + parentSegment + "' ("
+                    + parentNode.getClass().getName() + ")");
+        }
+        ObjectNode childNode = null;
+        String cleanedSegment = AtlasPath.cleanPathSegment(segment);
+        if (AtlasPath.isCollectionSegment(segment)) {
+            ArrayNode arrayChild = parentNode.putArray(cleanedSegment);
+            int index = AtlasPath.indexOfSegment(segment);
+
+            if (arrayChild.size() < (index + 1)) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Object Array is too small, resizing to accomodate index: " + index + ", current array: "
+                            + arrayChild);
+                }
+                // if our array doesn't have index + 1 items in it, add objects until we have
+                // the index available
+                while (arrayChild.size() < (index + 1)) {
+                    arrayChild.addObject();
+                }
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Object Array after resizing: " + arrayChild);
+                }
+            }
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Created wrapper parent array node '" + segment + "': " + arrayChild);
+            }
+            childNode = (ObjectNode) arrayChild.get(index);
+        } else {
+            childNode = parentNode.putObject(cleanedSegment);
+        }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Parent Node '" + parentSegment + "' after adding child parent node '" + segment + "':"
+                    + parentNode);
+        }
+        return childNode;
+    }
+
+    private JsonNode createValueNode(Field jsonField) {
+        FieldType type = jsonField.getFieldType();
+        Object value = jsonField.getValue();
+        JsonNode valueNode = null;
+        if (FieldType.STRING.equals(type)) {
+            if (value != null) {
+                valueNode = rootNode.textNode(String.valueOf(value));
+            } else {
+                valueNode = rootNode.nullNode();
+            }
+        } else if (FieldType.CHAR.equals(type)) {
+            valueNode = rootNode.textNode(Character.toString((char) value));
+        } else if (FieldType.BOOLEAN.equals(type)) {
+            valueNode = rootNode.booleanNode((Boolean) value);
+        } else if (FieldType.INTEGER.equals(type)) {
+            valueNode = rootNode.numberNode((Integer) value);
+        } else if (FieldType.DOUBLE.equals(type) || FieldType.FLOAT.equals(type) || FieldType.NUMBER.equals(type)) {
+            valueNode = rootNode.numberNode(new BigDecimal(String.valueOf(value)));
+        } else if (FieldType.SHORT.equals(type)) {
+            valueNode = rootNode.numberNode(Short.valueOf(String.valueOf(value)));
+        } else if (FieldType.LONG.equals(type)) {
+            valueNode = rootNode.numberNode(Long.valueOf(String.valueOf(value)));
+        } else if (FieldType.BYTE.equals(type)) {
+            valueNode = rootNode.numberNode(Byte.valueOf(String.valueOf(value)));
+        } else {
+            valueNode = rootNode.nullNode();
+        }
+        if (LOG.isDebugEnabled()) {
+            String valueClass = value == null ? "null" : value.getClass().getName();
+            LOG.debug("Converted JsonField value to ValueNode. Type: " + type + ", value: " + value + "(" + valueClass
+                    + "), node class: " + valueNode.getClass().getName() + ", node: " + valueNode);
+        }
+        return valueNode;
+    }
+
+    public static JsonNode getChildNode(ObjectNode parentNode, String parentSegment, String segment) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Looking for child node '" + segment + "' in parent '" + parentSegment + "': " + parentNode);
+        }
+        String cleanedSegment = AtlasPath.cleanPathSegment(segment);
+        JsonNode childNode = parentNode.path(cleanedSegment);
+        if (JsonNodeType.MISSING.equals(childNode.getNodeType())) {
+            childNode = null;
+        }
+        if (LOG.isDebugEnabled()) {
+            if (childNode == null) {
+                LOG.debug("Could not find child node '" + segment + "' in parent '" + parentSegment + "'.");
+            } else {
+                LOG.debug("Found child node '" + segment + "' in parent '" + parentSegment + "', class: "
+                        + childNode.getClass().getName() + ", node: " + childNode);
+            }
+        }
+        return childNode;
+    }
+
+}

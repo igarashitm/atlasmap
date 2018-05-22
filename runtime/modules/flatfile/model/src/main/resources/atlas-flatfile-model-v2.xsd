@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2017 Red Hat, Inc. Licensed under the Apache License, 
+    Version 2.0 (the "License"); you may not use this file except in compliance 
+    with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+    Unless required by applicable law or agreed to in writing, software distributed 
+    under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+    OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+    the specific language governing permissions and limitations under the License. -->
+<!-- ${project.version} -->
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:atlas="http://atlasmap.io/v2"
+  xmlns:atlasff="http://atlasmap.io/flatfile/v2" targetNamespace="http://atlasmap.io/flatfile/v2"
+  elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+  <import namespace="http://atlasmap.io/v2" schemaLocation="http://atlasmap.io/v2/atlas-model-v2.xsd" />
+
+  <complexType name="FlatFileDataSource">
+    <complexContent>
+      <extension base="atlas:DataSource">
+        <sequence>
+          <element name="Template" type="string"
+            minOccurs="0" maxOccurs="1" />
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+
+  <complexType name="FlatFileDocument">
+    <complexContent>
+      <extension base="atlas:Document" />
+    </complexContent>
+  </complexType>
+
+  <complexType name="FlatFileFields">
+    <sequence>
+      <element name="FlatFileField" type="atlasff:FlatFileField"
+        minOccurs="0" maxOccurs="unbounded" />
+    </sequence>
+  </complexType>
+
+  <complexType name="FlatFileField">
+    <complexContent>
+      <extension base="atlas:Field">
+        <attribute name="name" type="string" use="required" />
+        <attribute name="columnIndex" type="int" use="required" />
+        <attribute name="primitive" type="boolean"
+          use="optional" />
+        <attribute name="userCreated" type="boolean"
+          use="optional" />
+      </extension>
+    </complexContent>
+  </complexType>
+
+  <complexType name="FlatFileComplexType">
+    <complexContent>
+      <extension base="atlasff:FlatFileField">
+        <sequence>
+          <element name="FlatFileFields" type="atlasff:FlatFileFields"
+            minOccurs="1" maxOccurs="1" />
+        </sequence>
+        <attribute name="uri" type="string" use="optional" />
+      </extension>
+    </complexContent>
+  </complexType>
+
+  <complexType name="FlatFileInspectionRequest">
+    <sequence>
+      <element name="FieldNameBlacklist" type="atlas:StringList"
+        minOccurs="0" maxOcurs="1" />
+      <element name="TypeNameBlacklist" type="atlas:StringList"
+        minOccurs="0" maxOcurs="1" />
+      <element name="NamespaceBlacklist" type="atlas:StringList"
+        minOccurs="0" maxOcurs="1" />
+      <element name="SchemaData" type="string" minOccurs="0"
+        maxOccurs="1" />
+    </sequence>
+    <attribute name="uri" type="string" use="optional" />
+    <attribute name="type" type="atlasff:InspectionType"
+      use="required" />
+  </complexType>
+
+  <complexType name="FlatFileInspectionResponse">
+    <sequence>
+      <element name="FlatFileDocument" type="atlasff:FlatFileDocument"
+        minOccurs="0" maxOccurs="1" />
+    </sequence>
+    <attribute name="errorMessage" type="string" use="optional" />
+    <attribute name="executionTime" type="long" use="optional" />
+  </complexType>
+
+  <simpleType name="InspectionType">
+    <restriction base="string">
+      <enumeration value="All" />
+      <enumeration value="FFD" />
+      <enumeration value="None" />
+    </restriction>
+  </simpleType>
+
+  <complexType name="Segment">
+    <sequence>
+      <element name="values" type="atlasff:FlatFileElements" minOccurs="0" maxOccurs="1" />
+    </sequence>
+    <attribute name="id" type="string" use="optional" />
+    <attribute name="tag" type="string" use="optional" />
+    <attribute name="name" type="string" use="optional" />
+  </complexType>
+
+  <complexType name="FlatFileDefinition">
+    <complexContent>
+      <extension base="atlasff:Segment">
+        <sequence>
+          <element name="structures" type="atlasff:FlatFileStructures" minOccurs="0" maxoccurs="1" />
+          <element name="segments" type="atlasff:FlatFileSegments" minOccurs="0" maxoccurs="1" />
+        </sequence>
+        <attribute name="form" type="atlasff:InspectionType" use="required" />
+      </extension>
+    </complexContent>
+  </complexType>
+
+  <complexType name="FlatFileElements">
+    <all>
+      <element name="Composite" type="atlasff:Composite" minOccurs="0" maxOccurs="unbounded" />
+      <element name="Element" type="atlasff:Element" minOccurs="0" maxOccurs="unbounded" />
+    </all>
+  </complexType>
+
+  <complexType name="FlatFileSegments">
+    <sequence>
+      <element name="Segment" type="atlasff:Segment" minOccurs="0" maxOccurs="unbounded" />
+    </sequence>
+  </complexType>
+
+  <complexType name="Element">
+    <sequence>
+      <element name="format" type="atlasff:ElementFormat" use="optional" />
+    </sequence>
+    <attribute name="name" type="string" use="optional" />
+    <attribute name="type" type="atlasff:ElementType" use="optional" />
+    <attribute name="length" type="int" use="optional" />
+  </complexType>
+
+  <simpleType name="ElementType">
+    <restriction>
+      <enumeration value="Boolean" />
+      <enumeration value="Date" />
+      <enumeration value="DateTime" />
+      <enumeration value="Decimal" />
+      <enumeration value="Integer" />
+      <enumeration value="Packed" />
+      <enumeration value="String" />
+      <enumeration value="Time" />
+    </restriction>
+  </simpleType>
+
+  <complexType name="ElementFormat">
+    <attribute name="implicit" type="int" use="optional" />
+    <attribute name="justify" type="atlasff:FormatJustification" use="optional" />
+    <attribute name="pattern" type="string" use="optional" />
+    <attribute name="sign" type="atlasff:FormatSignUsage" use="optional" />
+  </complexType>
+
+  <simpleType name="FormatJustification">
+    <restriction>
+      <enumeration value="LEFT" />
+      <enumeration value="RIGHT" />
+      <enumeration value="NONE" />
+      <enumeration value="ZEROES" />
+    </restriction>
+  </simpleType>
+
+  <simpleType name="FormatSignUsage">
+    <restriction>
+      <enumeration value="UNSIGNED" />
+      <enumeration value="NEGATIVE_ONLY" />
+      <enumeration value="OPTIONAL" />
+      <enumeration value="ALWAYS_LEFT" />
+      <enumeration value="ALWAYS_RIGHT" />
+    </restriction>
+  </simpleType>
+
+</schema>
