@@ -1,22 +1,6 @@
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="utf-8">
-  <title>AtlasMap Data Mapper UI</title>
-  <base href="/">
-
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-</head>
-
-<body>
- <div class='atlasmapImport'>
-
-    <atlasmap-import>xxxxx</atlasmap-import>
-
-  <!-- <button type="button" class="btn btn-primary" (click)="handleClick()"> cat2</button> -->
-
+<div class='atlasmapImport' >
+    <button type="button" class="btn btn-primary" (click)="handleClick()"> cat</button>
+<!-- 
   <nav class="navbar navbar-default navbar-pf" role="navigation">
     <div class="navbar-header">
       <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse-1">
@@ -41,7 +25,7 @@
                 <input type="file" accept=".json" style="display:none" name="userjsonfile" size="40"
                   id="userjsonfile"
                   (click)="handleClick()"
-                  (change)="rat('json')">                  <!-- onclick="handleClick2()" -->
+                  (change)="rat('json')">
 	          </a>
             </li>
             <li>
@@ -81,26 +65,5 @@
       </ul>
     </div>
   </nav>
-
+-->
  </div>
-
-  <div class="row toolbar-pf">
-    <ol class="breadcrumb">
-      <li>
-        <a href="#">Dashboard</a>
-      </li>
-      <li>
-        <a href="#">Create an integration</a>
-      </li>
-      <li class="active">
-        <strong>Data Mapping Canvas</strong>
-      </li>
-    </ol>
-  </div>
-
-  <div class="atlasmap__root">
-    <atlasmap-dev-root></atlasmap-dev-root> 
-  </div>
-</body>
-
-</html>

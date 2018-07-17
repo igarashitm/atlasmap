@@ -14,7 +14,7 @@
     limitations under the License.
 */
 
-import { NgModule, ModuleWithProviders } from '@angular/core';
+import { NgModule, ModuleWithProviders, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule, HttpClientXsrfModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -55,6 +55,8 @@ import { MappingSelectionSectionComponent } from './components/mapping/mapping-s
 import { LookupTableComponent } from './components/mapping/lookup-table.component';
 import { TransitionSelectionComponent } from './components/mapping/transition-selection.component';
 import { FocusDirective } from './common/focus.directive';
+
+import { AtlasmapImportComponent } from '../../../atlasmap-import.component';
 
 // export services/types for consumers of this module
 export { ApiXsrfInterceptor } from './services/api-xsrf-interceptor.service';
@@ -117,7 +119,8 @@ export { DataMapperAppComponent } from './components/data-mapper-app.component';
     NamespaceListComponent,
     TemplateEditComponent,
     FocusDirective,
-    ToErrorIconClassPipe
+    ToErrorIconClassPipe,
+    AtlasmapImportComponent
   ],
   exports: [
     DataMapperAppExampleHostComponent,
@@ -142,6 +145,7 @@ export { DataMapperAppComponent } from './components/data-mapper-app.component';
     TemplateEditComponent,
   ],
   bootstrap: [DataMapperAppExampleHostComponent],
+  schemas: [ CUSTOM_ELEMENTS_SCHEMA ]
 })
 export class DataMapperModule {
   static withInterceptor(): Array<ModuleWithProviders> {
