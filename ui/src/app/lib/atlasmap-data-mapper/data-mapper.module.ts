@@ -56,8 +56,6 @@ import { LookupTableComponent } from './components/mapping/lookup-table.componen
 import { TransitionSelectionComponent } from './components/mapping/transition-selection.component';
 import { FocusDirective } from './common/focus.directive';
 
-import { AtlasmapImportComponent } from '../../../atlasmap-import.component';
-
 // export services/types for consumers of this module
 export { ApiXsrfInterceptor } from './services/api-xsrf-interceptor.service';
 export { ErrorHandlerService } from './services/error-handler.service';
@@ -119,8 +117,7 @@ export { DataMapperAppComponent } from './components/data-mapper-app.component';
     NamespaceListComponent,
     TemplateEditComponent,
     FocusDirective,
-    ToErrorIconClassPipe,
-    AtlasmapImportComponent
+    ToErrorIconClassPipe
   ],
   exports: [
     DataMapperAppExampleHostComponent,

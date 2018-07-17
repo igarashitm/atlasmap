@@ -4,7 +4,7 @@ import { Component } from '@angular/core';
 @Component({
   selector: 'atlasmap-import',
   templateUrl: './atlasmap-import.component.html',
-  styleUrls: ['./app/lib/atlasmap-data-mapper/components/data-mapper-app.component.css']
+  styleUrls: ['./lib/atlasmap-data-mapper/components/data-mapper-app.component.css']
 })
 // templateUrl: './index.html',
 export class AtlasmapImportComponent {
